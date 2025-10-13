@@ -1,7 +1,7 @@
 import * as sdk from "@defillama/sdk";
 import { Client } from "@elastic/elasticsearch";
 import { normalizeCoinId } from "./utils";
-console.log(process.env.ELASTICSEARCH_HOST)
+
 let _client: Client | undefined;
 export function getClient(): Client | undefined {
   if (_client) return _client;
@@ -63,7 +63,14 @@ export async function init(): Promise<void> {
 
 async function _init(): Promise<void> {
   let records: MetadataRecord[];
-  const currentCache = await sdk.cache.readExpiringJsonCache(cacheFile);
+  let currentCache
+  
+  try {
+    currentCache = await sdk.cache.readExpiringJsonCache(cacheFile);
+  } catch (e) {
+    console.log("Error reading coin metadata cache:", e);
+    currentCache = null;
+  }
 
   if (currentCache) {
     records = currentCache;
@@ -138,7 +145,7 @@ async function fetchAllRecords(index: string): Promise<MetadataRecord[]> {
       query: {
         match_all: {},
       },
-      size: 10000,
+      size: 100000,
     },
   });
 

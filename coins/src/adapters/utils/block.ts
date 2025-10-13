@@ -6,7 +6,6 @@ export default async function getBlock(
   chain: any,
   timestamp: number,
 ): Promise<number | undefined> {
-  console.log("Getting block for", chain, timestamp);
   if (timestamp == 0) return;
   if (chain == "era") {
     try {

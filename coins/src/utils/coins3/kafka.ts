@@ -14,10 +14,10 @@ export function getKafka(): Kafka {
     kafka = new Kafka({
       clientId: "my-app",
       brokers: brokers.split(","),
-      // ssl: {
-      //   rejectUnauthorized: false,
-      // },
-      // sasl: { mechanism: "scram-sha-256", username, password },
+      ssl: {
+        rejectUnauthorized: false,
+      },
+      sasl: { mechanism: "scram-sha-256", username, password },
     });
   }
   return kafka;
