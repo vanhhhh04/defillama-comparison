@@ -1,7 +1,7 @@
-import chainAssets from "./tvl";
+import chainAssets from "../l2/tvl";
 import { storeR2JSONString } from "../src/utils/r2";
 import { getCurrentUnixTimestamp } from "../src/utils/date";
-import storeHistorical from "./storeToDb";
+import storeHistorical from "../l2/storeToDb";
 // import setEnvSecrets from "./utils/shared/setEnvSecrets";
 
 export default async function storeChainAssets(override: boolean) {

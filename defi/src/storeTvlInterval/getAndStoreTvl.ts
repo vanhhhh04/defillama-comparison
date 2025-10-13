@@ -17,7 +17,7 @@ import BigNumber from "bignumber.js";
 import { TABLES } from "../api2/db"
 import { getCurrentUnixTimestamp } from "../utils/date";
 import { StaleCoins } from "./staleCoins";
-import { storeAllTokens } from "../utils/shared/bridgedTvlPostgres";
+import { storeAllTokens } from "../../src/utils/shared/bridgedTvlPostgres";
 import { elastic } from '@defillama/sdk';
 import { getBlocksRetry, getCurrentBlock } from "./blocks";
 import { importAdapterDynamic } from "../utils/imports/importAdapter";

@@ -1,4 +1,4 @@
-import { queryPostgresWithRetry } from "../utils/shared/bridgedTvlPostgres";
+import { queryPostgresWithRetry } from "../../src/utils/shared/bridgedTvlPostgres";
 import { getPgConnection } from "../utils/shared/getDBConnection";
 import { sendMessage } from "../utils/discord";
 import { searchWidth } from "../utils/shared/constants";
