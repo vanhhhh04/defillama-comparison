@@ -1,0 +1,284 @@
+useDotenv: true
+service: coins
+
+package:
+  individually: true
+
+provider:
+  name: aws
+  runtime: nodejs14.x
+  memorySize: 250
+  region: eu-central-1
+  endpointType: REGIONAL # Set to regional because the api gateway will be behind a cloudfront distribution
+  stage: prod # Default to dev if no stage is specified
+  iamRoleStatements:
+    - Effect: Allow # X-Ray permissions
+      Action:
+        - xray:PutTraceSegments
+        - xray:PutTelemetryRecords
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - dynamodb:DescribeTable
+        - dynamodb:Query
+        - dynamodb:Scan
+        - dynamodb:GetItem
+        - dynamodb:PutItem
+        - dynamodb:UpdateItem
+        - dynamodb:DeleteItem
+        - dynamodb:BatchGetItem
+        - dynamodb:BatchWriteItem
+      Resource:
+        - "Fn::GetAtt": [DynamoTable, Arn]
+    - Effect: "Allow"
+      Action:
+        - dynamodb:GetItem
+      Resource:
+        - "arn:aws:dynamodb:eu-central-1:856461987125:table/secrets"
+    - Effect: Allow # Lambda logs on cloudwatch
+      Action:
+        - logs:CreateLogGroup
+        - logs:CreateLogStream
+        - logs:PutLogEvents
+      Resource:
+        - "Fn::Join":
+            - ":"
+            - - "arn:aws:logs"
+              - Ref: "AWS::Region"
+              - Ref: "AWS::AccountId"
+              - "log-group:/aws/lambda/*:*:*"
+    # For warm-up functions
+    - Effect: "Allow"
+      Action:
+        - "lambda:InvokeFunction"
+      Resource: "*"
+    - Effect: "Allow"
+      Action:
+        - "s3:ListBucket"
+        - "s3:*Object*"
+      Resource: "*"
+    - Effect: Allow
+      Action:
+        - sts:AssumeRole
+      Resource:
+        - "arn:aws:iam::345594567026:role/defillama-role-345594567026"
+  environment:
+    ETHEREUM_RPC: ${file(./env.js):ETHEREUM_RPC}
+    BSC_RPC: ${file(./env.js):BSC_RPC}
+    POLYGON_RPC: ${file(./env.js):POLYGON_RPC}
+    FANTOM_RPC: ${file(./env.js):FANTOM_RPC}
+    ARBITRUM_RPC: ${file(./env.js):ARBITRUM_RPC}
+    OPTIMISM_RPC: ${file(./env.js):OPTIMISM_RPC}
+    XDAI_RPC: ${file(./env.js):XDAI_RPC}
+    HARMONY_RPC: ${file(./env.js):HARMONY_RPC}
+    SOLANA_RPC: ${file(./env.js):SOLANA_RPC}
+    MISSING_COINS_DB_PWD: ${file(./env.js):MISSING_COINS_DB_PWD}
+    DEFILLAMA_SDK_MUTED: true
+    tableName: ${self:custom.tableName}
+    stage: ${self:custom.stage}
+    R2_ACCESS_KEY_ID: ${file(./env.js):R2_ACCESS_KEY_ID}
+    R2_SECRET_ACCESS_KEY: ${file(./env.js):R2_SECRET_ACCESS_KEY}
+    R2_ENDPOINT: ${file(./env.js):R2_ENDPOINT}
+
+custom:
+  stage: ${opt:stage, self:provider.stage}
+  esbuild:
+    bundle: true
+    minify: false
+    concurrency: 4
+  prune:
+    automatic: true
+    number: 5 # Number of versions to keep
+  tableName: ${self:custom.stage}-coins-table
+  region: eu-central-1
+  domainMap:
+    prod:
+      domain: coins.llama.fi
+      certificateArn: "arn:aws:acm:us-east-1:856461987125:certificate/b4209013-30a6-417e-847e-6e630c3e77fe"
+      hostedZone: llama.fi
+    dev:
+      domain: staging-coins.llama.fi
+      certificateArn: "arn:aws:acm:us-east-1:856461987125:certificate/b4209013-30a6-417e-847e-6e630c3e77fe"
+      hostedZone: llama.fi
+  domain: ${self:custom.domainMap.${self:custom.stage}.domain}
+  certificateArn: ${self:custom.domainMap.${self:custom.stage}.certificateArn}
+  hostedZone: ${self:custom.domainMap.${self:custom.stage}.hostedZone}
+  logRetentionInDays: 30
+
+functions:
+  fallback:
+    handler: src/fallback.default
+    events:
+      - httpApi:
+          path: /{params+}
+          method: any
+  coins:
+    handler: src/getCoins.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /prices
+          method: post
+  mcaps:
+    handler: src/getMcaps.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /mcaps
+          method: post
+  chains:
+    handler: src/getChains.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /chains
+          method: get
+  coinPrices:
+    handler: src/getCoinPrices.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /coin/timestamps
+          method: post
+  currentCoinPrices:
+    handler: src/getCurrentCoins.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /prices/current/{coins}
+          method: get
+  updateCoinPrices:
+    handler: src/updateCoin.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /prices/update/{coins}
+          method: get
+  coinFirstTimestamp:
+    handler: src/getCoinFirstTimestamp.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /prices/first/{coins}
+          method: get
+  historicalCoinPrices:
+    handler: src/getHistoricalCoins.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /prices/historical/{timestamp}/{coins}
+          method: get
+  coinPriceChart:
+    handler: src/getCoinPriceChart.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /chart/{coins}
+          method: get
+  batchHistorical:
+    handler: src/getBatchHistoricalCoins.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /batchHistorical
+          method: get
+  batchHistoricalSpan:
+    handler: src/getBatchHistoricalCoinsSpan.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /batchHistoricalSpan
+          method: get
+  coinPercentageChange:
+    handler: src/getPercentageChange.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /percentage/{coins}
+          method: get
+  coinVolumes:
+    handler: src/getVolume.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /volume/{coins}
+          method: get
+  block:
+    handler: src/getBlock.default
+    timeout: 60
+    events:
+      - httpApi:
+          path: /block/{chain}/{timestamp}
+          method: get
+    environment:
+      LLAMA_PROVIDER_RPC_GET_BLOCKNUMBER_TIMEOUT: 3000
+  batchBlocks:
+    handler: src/getBlock.batchBlocks
+    timeout: 60
+    events:
+      - httpApi:
+          path: /blocks/{chain}
+          method: post
+    environment:
+      LLAMA_PROVIDER_RPC_GET_BLOCKNUMBER_TIMEOUT: 3000
+  corsPreflight:
+    handler: src/corsPreflight.default
+    events:
+      - httpApi:
+          path: /{params+}
+          method: options
+  # fetchCoingeckoData2:
+  #     handler: src/fetchCoingeckoData.fetchCoingeckoData
+  #     timeout: 900
+  #     environment:
+  #       CG_KEY: ${env:CG_KEY}
+  # triggerFetchCoingeckoData:
+  #   handler: src/triggerFetchCoingeckoData.triggerNewFetches
+  #   events:
+  #     - schedule: rate(5 minutes)
+  #   environment:
+  #     CG_KEY: ${env:CG_KEY}
+  # triggerHourlyFetchCoingeckoData:
+  #   handler: src/triggerFetchCoingeckoData.triggerHourlyFetches
+  #   events:
+  #     - schedule: cron(0 0,12 * * ? *) # every 12 hours
+  #   environment:
+  #     CG_KEY: ${env:CG_KEY}
+  # fetchHourlyCoingeckoData:
+  #   handler: src/fetchCoingeckoData.fetchHourlyCoingeckoData
+  #   timeout: 900
+  #   environment:
+  #     CG_KEY: ${env:CG_KEY}
+  # storeDefiCoins:
+  #   handler: src/storeCoins.default
+  #   timeout: 900
+  #   memorySize: 1024
+  #   environment: 
+  #     STALE_COINS_ADAPTERS_WEBHOOK: ${env:STALE_COINS_ADAPTERS_WEBHOOK}
+# triggerStoreDefiCoins:
+#   handler: src/triggerStoreCoins.default
+#   timeout: 900
+#   events:
+#     - schedule: cron(45 * * * ? *) # Hourly
+  StoreBridgedCoins:
+    handler: src/storeBridgedCoins.default
+    timeout: 900
+    memorySize: 1024
+    events:
+      - schedule: cron(45 * * * ? *) # Hourly
+    environment:
+      R2_ACCESS_KEY_ID: ${env:R2_ACCESS_KEY_ID}
+      R2_SECRET_ACCESS_KEY: ${env:R2_SECRET_ACCESS_KEY}
+      R2_ENDPOINT: ${env:R2_ENDPOINT}
+
+resources:
+  # DynamoDB
+  - ${file(resources/dynamodb-table.yml)}
+  # Cloudfront API distribution
+  - ${file(resources2/api-cloudfront-distribution.yml)}
+
+plugins:
+  - serverless-esbuild
+  - serverless-offline
+  - serverless-prune-plugin
+  - serverless-plugin-log-retention
