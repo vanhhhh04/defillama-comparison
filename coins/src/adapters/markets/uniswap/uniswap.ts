@@ -47,7 +47,6 @@ async function fetchUniV2MarketsFromSubgraph(
   subgraph: string,
   timestamp: number,
 ) {
-  console.log("Fetching from subgraph:", subgraph, timestamp);
   let addresses: string[] = [];
   let reservereThreshold: Number = 0;
   for (let i = 0; i < 10; i++) {
