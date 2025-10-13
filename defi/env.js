@@ -3,7 +3,7 @@ try {
 } catch (e) {}
 module.exports = {
   ETHEREUM_RPC: process.env.ETHEREUM_RPC,
-  BSC_RPC: 'sdlfjalsdkjfads',
+  BSC_RPC: process.env.BSC_RPC,
   POLYGON_RPC: process.env.POLYGON_RPC,
   FANTOM_RPC: process.env.FANTOM_RPC,
   ARBITRUM_RPC: process.env.ARBITRUM_RPC,
