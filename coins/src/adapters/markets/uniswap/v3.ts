@@ -28,6 +28,8 @@ const dollarAmt = 10 ** 5;
 
 const quoters: { [chain: string]: string } = {
   ethereum: "0x61fFE014bA17989E743c5F6cB21bF9697530B21e",
+  bsc: "0xB048Bbc1Ee6b733FFfCFb9e9CeF7375518e25997",     // Pancake V3 QuoterV2
+
 };
 
 async function estimateValuesAndFetchMetadata(
@@ -118,6 +120,7 @@ async function estimateValuesAndFetchMetadata(
       }),
     ),
   ]);
+  console.log(`[LOG] estimateValuesAndFetchMetadata completed for chain=${chain}`);
 
   return data;
 }
@@ -165,6 +168,7 @@ function createMainQuoterCalls(chain: any, data: Data): Call[] {
       );
     });
   });
+  console.log(`[LOG] createMainQuoterCalls completed for chain=${chain}`);
 
   return calls;
 }
@@ -205,16 +209,21 @@ async function findPricesThroughV3(
   timestamp: number,
 ) {
   const block = await getBlock(chain, timestamp);
-
+  console.log(`[LOG] getBlock completed for chain=${chain}, block=${block}`);
+  
   const data = await estimateValuesAndFetchMetadata(chain, tokens, block);
   Object.keys(data).map((a: string) => {
     data[a].priceEstimate = 10 ** data[a].decimals / data[a].rawQty;
   });
+  console.log(`[LOG] estimateValuesAndFetchMetadata completed for chain=${chain}`);
+
 
   const calls: Call[] = createMainQuoterCalls(chain, data);
+  console.log(`[LOG] createMainQuoterCalls completed for chain=${chain}`);
 
   await fetchSwapQuotes(chain, calls, data, block);
   const writes: Write[] = [];
+  console.log(`[LOG] fetchSwapQuotes completed for chain=${chain}`);
 
   Object.keys(data).map((t: string) => {
     const tokenData = data[t];
@@ -228,7 +237,7 @@ async function findPricesThroughV3(
       tokenData.largeRate / tokenData.smallRate,
       0.989,
     );
-
+    console.log(`[LOG] Token: ${t}, Symbol: ${tokenData.symbol}, Price: ${tokenData.smallRate}`);
     addToDBWritesList(
       writes,
       chain,
@@ -247,14 +256,17 @@ async function findPricesThroughV3(
 export function uniV3(timestamp: number = 0) {
   return Promise.all([
     findPricesThroughV3(
-      "ethereum",
+      "bsc",
       [
         {
-          in: "0x7a486f809c952a6f8dec8cb0ff68173f2b8ed56c",
-          out: "0xa0b86991c6218b36c1d19d4a2e9eb0ce3606eb48",
-        },
+          in: "0xbb4CdB9CBd36B01bD1cBaEBF2De08d9173bc095c",
+          out: "0x55d398326f99059fF775485246999027B3197955",
+        }
       ],
       timestamp,
     ),
-  ]);
+  ]).then((results) => {
+    console.log(`[LOG] uniV3 all chains completed`);
+    return results;
+  });
 }

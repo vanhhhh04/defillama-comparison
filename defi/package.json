@@ -101,6 +101,7 @@
     "@types/node": "^18.0.0",
     "@types/node-fetch": "^2.5.10",
     "@types/promise.allsettled": "^1.0.6",
+    "aws-sdk": "^2.1692.0",
     "axios": "^1.6.5",
     "bignumber.js": "^9.0.1",
     "buffer-layout": "^1.2.2",
