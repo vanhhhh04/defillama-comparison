@@ -1,0 +1,46 @@
+services:
+  sls-offline:
+    build:
+      context: ..                  # repo root containing /coins and /defi
+      dockerfile: coins/Dockerfile
+    image: coins-sls:latest
+    working_dir: /app/coins
+
+    volumes:
+      - ..:/app
+      - coins_node_modules:/app/coins/node_modules
+      - defi_node_modules:/app/defi/node_modules
+
+    env_file:
+      - ./.env
+    environment:
+      STAGE: local
+      AWS_REGION: us-east-1
+
+    ports:
+      - "3000:3000"
+
+    command: >
+            sh -lc '
+              if [ -d /app/defi ] && [ -f /app/defi/package.json ]; then
+                cd /app/defi && ( [ -f package-lock.json ] && npm ci --omit=optional || npm i --omit=optional );
+              fi;
+              cd /app/coins && ( [ -f package-lock.json ] && npm ci --omit=optional || npm i --omit=optional );
+              npx serverless offline start
+                --host 0.0.0.0
+                --httpPort 3000
+                --lambdaPort 3002
+                --stage ${STAGE}
+                --region ${AWS_REGION}
+            '
+    networks:
+      liquidz-nw:
+        aliases:
+          - coins-api
+volumes:
+  coins_node_modules:
+  defi_node_modules:
+networks:
+  liquidz-nw:
+    name: liquidz-api_liquidz-nw
+    external: true

@@ -74,3 +74,11 @@ export type CoinRead = {
   timestamp: number;
   key: string;
 };
+
+export interface PriceResponse {
+  in: string;
+  out: string;
+  price: number;
+  chain: string;
+  exchange: string;
+}
